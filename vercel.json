@@ -1,0 +1,10 @@
+{
+  "buildCommand": null,
+  "outputDirectory": null,
+  "installCommand": null,
+  "rewrites": [
+    { "source": "/api/chat", "destination": "/api/chat" },
+    { "source": "/api/card", "destination": "/api/card" },
+    { "source": "/(.*)", "destination": "/public/$1" }
+  ]
+}
