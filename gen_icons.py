@@ -64,6 +64,6 @@ def make_icon(size):
 
 for size in [192, 512]:
     icon = make_icon(size)
-    icon.save(f'public/icon-{size}.png')
+    icon.save(f'icon-{size}.png')
 
 print('✅ Icons generated')
