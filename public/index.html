@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>TalkTalk</title>
+<style>
+:root {
+  --bg: #FFF8F3;
+  --card-bg: #FFFEFB;
+  --primary: #D4786E;
+  --primary-light: #F0C4BC;
+  --accent-purple: #9B7E9E;
+  --accent-blue: #7B9EB5;
+  --accent-green: #89A88C;
+  --accent-amber: #C49B6E;
+  --text: #3D2B28;
+  --text-light: #8A7975;
+  --bubble-mom: #FFF;
+  --bubble-ai: #FEF0EB;
+  --shadow: 0 2px 12px rgba(61,43,40,0.06);
+  --shadow-lg: 0 8px 30px rgba(61,43,40,0.10);
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-lg: 24px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { font-size:16px; -webkit-tap-highlight-color:transparent; }
+body {
+  font-family: -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── App Shell ── */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  background: var(--bg);
+  z-index: 10;
+}
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.5px;
+}
+.header-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+.header-btn:active { transform: scale(0.92); }
+
+/* ── Chat Area ── */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+}
+.chat-area::-webkit-scrollbar { width: 0; }
+
+/* Welcome state */
+.welcome {
+  text-align: center;
+  padding: 60px 20px 40px;
+}
+.welcome-emoji { font-size: 3.5rem; margin-bottom: 16px; }
+.welcome-title { font-size: 1.1rem; color: var(--text-light); line-height: 1.8; }
+
+/* Chat bubbles */
+.bubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  line-height: 1.6;
+  word-break: break-word;
+  animation: bubbleIn 0.3s ease-out;
+}
+@keyframes bubbleIn {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.bubble-mom {
+  align-self: flex-end;
+  background: var(--bubble-mom);
+  box-shadow: var(--shadow);
+  border-bottom-right-radius: 6px;
+}
+.bubble-ai {
+  align-self: flex-start;
+  background: var(--bubble-ai);
+  border-bottom-left-radius: 6px;
+}
+.bubble-ai .typing-dots {
+  display: flex; gap: 5px; padding: 4px 0;
+}
+.typing-dots span {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  animation: dotPulse 1.4s infinite ease-in-out;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dotPulse {
+  0%,80%,100% { transform:scale(0.6); opacity:0.4; }
+  40% { transform:scale(1); opacity:1; }
+}
+
+/* Card notification in chat */
+.card-notice {
+  align-self: center;
+  font-size: 0.8rem;
+  color: var(--accent-purple);
+  background: rgba(155,126,158,0.08);
+  padding: 4px 14px;
+  border-radius: 20px;
+  animation: bubbleIn 0.5s ease-out;
+}
+
+/* ── Input Area ── */
+.input-area {
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 10;
+}
+.text-input-wrap {
+  flex: 1;
+  position: relative;
+}
+.text-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  color: var(--text);
+}
+.text-input:focus { border-color: var(--primary-light); }
+.text-input::placeholder { color: #C5B5B0; }
+.text-input.hidden { display: none; }
+
+.mic-btn {
+  width: 56px; height: 56px;
+  min-width: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary);
+  color: #FFF;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(212,120,110,0.35);
+  transition: all 0.2s;
+  position: relative;
+}
+.mic-btn:active { transform: scale(0.93); }
+.mic-btn.recording {
+  background: #E85D4A;
+  animation: micPulse 1.2s ease-in-out infinite;
+  box-shadow: 0 4px 24px rgba(232,93,74,0.5);
+}
+@keyframes micPulse {
+  0%,100% { box-shadow: 0 4px 24px rgba(232,93,74,0.5); }
+  50% { box-shadow: 0 4px 36px rgba(232,93,74,0.7); }
+}
+.mic-btn.send-mode {
+  background: var(--accent-blue);
+  box-shadow: 0 4px 16px rgba(123,158,181,0.35);
+}
+
+.send-btn {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-green);
+  color: #FFF;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(137,168,140,0.3);
+  transition: transform 0.2s;
+}
+.send-btn:active { transform: scale(0.92); }
+.send-btn.visible { display: flex; }
+
+.mode-toggle {
+  width: 40px; height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+.mode-toggle:active { transform: scale(0.92); }
+
+/* ── Card Wall ── */
+.card-wall {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.card-wall.open { display: flex; }
+.card-wall-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  background: var(--bg);
+}
+.card-wall-back {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-wall-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.card-count {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  margin-left: auto;
+}
+.card-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 16px 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-content: start;
+}
+.card-grid::-webkit-scrollbar { width: 0; }
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.card:active { transform: scale(0.97); box-shadow: var(--shadow-lg); }
+.card-emoji { font-size: 1.8rem; margin-bottom: 8px; }
+.card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+.card-summary {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-date {
+  font-size: 0.72rem;
+  color: #C5B5B0;
+  margin-top: 8px;
+}
+.card-cat {
+  display: inline-block;
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 6px;
+}
+.cat-回忆 { background: #FDF0E8; color: var(--accent-amber); }
+.cat-感悟 { background: #F3ECF5; color: var(--accent-purple); }
+.cat-计划 { background: #EAF0F5; color: var(--accent-blue); }
+.cat-心情 { background: #FDEAEC; color: #C4787E; }
+.cat-趣事 { background: #ECF5EE; color: var(--accent-green); }
+
+/* Card detail modal */
+.card-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(61,43,40,0.4);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+.card-modal.open { display: flex; }
+.card-detail {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+  animation: modalIn 0.3s ease-out;
+}
+@keyframes modalIn {
+  from { opacity:0; transform:scale(0.9) translateY(20px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+.card-detail-emoji { font-size: 3rem; text-align:center; margin-bottom:12px; }
+.card-detail-title { font-size:1.2rem; font-weight:700; text-align:center; margin-bottom:4px; }
+.card-detail-cat { text-align:center; margin-bottom:12px; }
+.card-detail-summary {
+  font-size:1rem; color:var(--text-light);
+  line-height:1.7; text-align:center; margin-bottom:16px;
+}
+.card-detail-context {
+  font-size:0.8rem; color:#C5B5B0;
+  line-height:1.6; text-align:center;
+  padding:10px; background:var(--bg);
+  border-radius:var(--radius-sm);
+}
+.card-detail-date { text-align:center; font-size:0.78rem; color:#D0C4C0; margin-bottom:16px; }
+.card-detail-close {
+  display: block;
+  margin: 8px auto 0;
+  padding: 10px 32px;
+  border-radius: var(--radius-lg);
+  border: none;
+  background: var(--primary-light);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.card-detail-close:active { background: var(--primary); color:#FFF; }
+
+/* Empty state */
+.empty-cards {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-light);
+}
+.empty-cards-emoji { font-size: 3rem; margin-bottom:12px; }
+.empty-cards-text { font-size:0.95rem; line-height:1.8; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: #FFF;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  z-index: 300;
+  animation: toastIn 0.3s ease-out;
+  pointer-events: none;
+}
+@keyframes toastIn {
+  from { opacity:0; transform:translateX(-50%) translateY(10px); }
+  to   { opacity:1; transform:translateX(-50%) translateY(0); }
+}
+
+/* Keyboard mode toggle */
+.mode-hint {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  text-align: center;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+/* ── Responsive ── */
+@media (min-width: 480px) {
+  .app { border-left: 1px solid #EDE5E0; border-right: 1px solid #EDE5E0; }
+  .card-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- ── Header ── -->
+  <div class="header">
+    <button class="header-btn" id="cardWallBtn" title="我的卡片">🃏</button>
+    <span class="header-title">TalkTalk</span>
+    <div style="width:40px"></div>
+  </div>
+
+  <!-- ── Chat ── -->
+  <div class="chat-area" id="chatArea">
+    <div class="welcome" id="welcome">
+      <div class="welcome-emoji">🍵</div>
+      <div class="welcome-title">想说点什么吗？<br>我一直在这儿听</div>
+    </div>
+  </div>
+
+  <!-- ── Input ── -->
+  <div class="input-area" id="inputArea">
+    <button class="mode-toggle" id="modeToggle" title="切换语音/打字">⌨️</button>
+    <div class="text-input-wrap">
+      <input type="text" class="text-input hidden" id="textInput"
+             placeholder="打字聊聊…" autocomplete="off">
+    </div>
+    <button class="mic-btn" id="micBtn" title="按住说话">🎤</button>
+    <button class="send-btn" id="sendBtn" title="发送">↑</button>
+  </div>
+</div>
+
+<!-- ── Card Wall ── -->
+<div class="card-wall" id="cardWall">
+  <div class="card-wall-header">
+    <button class="card-wall-back" id="cardWallBack">←</button>
+    <span class="card-wall-title">我的想法卡片</span>
+    <span class="card-count" id="cardCount"></span>
+  </div>
+  <div class="card-grid" id="cardGrid"></div>
+</div>
+
+<!-- ── Card Detail Modal ── -->
+<div class="card-modal" id="cardModal">
+  <div class="card-detail" id="cardDetail"></div>
+</div>
+
+<!-- ── Toast container ── -->
+<div id="toastContainer"></div>
+
+<script>
+// ── State ──
+const chatHistory = JSON.parse(localStorage.getItem('talktalk_history') || '[]');
+const cards = JSON.parse(localStorage.getItem('talktalk_cards') || '[]');
+let inputMode = 'voice'; // 'voice' | 'text'
+let isRecording = false;
+let recognition = null;
+let pendingText = '';
+
+// ── DOM refs ──
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+const chatArea = $('#chatArea');
+const welcome = $('#welcome');
+const textInput = $('#textInput');
+const micBtn = $('#micBtn');
+const sendBtn = $('#sendBtn');
+const cardWall = $('#cardWall');
+const cardGrid = $('#cardGrid');
+const cardCount = $('#cardCount');
+const cardModal = $('#cardModal');
+const cardDetail = $('#cardDetail');
+const toastContainer = $('#toastContainer');
+
+// ── Init ──
+function init() {
+  renderChatHistory();
+  updateInputMode();
+  initSpeechRecognition();
+}
+
+function updateInputMode() {
+  const modeToggle = $('#modeToggle');
+  if (inputMode === 'voice') {
+    textInput.classList.add('hidden');
+    micBtn.style.display = 'flex';
+    micBtn.textContent = '🎤';
+    micBtn.classList.remove('send-mode');
+    sendBtn.classList.remove('visible');
+    modeToggle.textContent = '⌨️';
+  } else {
+    textInput.classList.remove('hidden');
+    micBtn.style.display = 'none';
+    sendBtn.classList.add('visible');
+    modeToggle.textContent = '🎤';
+  }
+}
+
+// ── Speech Recognition ──
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    // No speech support, force text mode
+    inputMode = 'text';
+    updateInputMode();
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.lang = 'zh-CN';
+  recognition.interimResults = true;
+  recognition.continuous = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = (e) => {
+    let transcript = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      transcript += e.results[i][0].transcript;
+    }
+    pendingText = transcript;
+    // Show live transcript in a temporary bubble
+    updateLiveTranscript(transcript);
+  };
+
+  recognition.onerror = (e) => {
+    console.log('Speech error:', e.error);
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    stopRecording(false);
+    showToast('听不清，可以打字试试');
+  };
+
+  recognition.onend = () => {
+    if (isRecording) {
+      // Auto-restart if still recording
+      try { recognition.start(); } catch(_) {}
+    }
+  };
+}
+
+let liveBubble = null;
+function updateLiveTranscript(text) {
+  if (!text.trim()) {
+    if (liveBubble) { liveBubble.remove(); liveBubble = null; }
+    return;
+  }
+  if (!liveBubble) {
+    liveBubble = document.createElement('div');
+    liveBubble.className = 'bubble bubble-mom';
+    liveBubble.style.opacity = '0.7';
+    chatArea.appendChild(liveBubble);
+    scrollToBottom();
+  }
+  liveBubble.textContent = text;
+  scrollToBottom();
+}
+
+// ── Recording ──
+micBtn.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  if (inputMode === 'text') {
+    // Switch to voice mode
+    inputMode = 'voice';
+    updateInputMode();
+    return;
+  }
+  startRecording();
+});
+
+micBtn.addEventListener('pointerup', (e) => {
+  e.preventDefault();
+  if (isRecording) stopRecording(true);
+});
+
+micBtn.addEventListener('pointerleave', (e) => {
+  if (isRecording) stopRecording(true);
+});
+
+// Prevent context menu on long press
+micBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+
+function startRecording() {
+  if (!recognition) {
+    inputMode = 'text';
+    updateInputMode();
+    showToast('浏览器不支持语音，请打字');
+    return;
+  }
+  isRecording = true;
+  pendingText = '';
+  micBtn.classList.add('recording');
+  micBtn.textContent = '●';
+  try {
+    recognition.start();
+  } catch(_) {}
+}
+
+function stopRecording(shouldSend) {
+  isRecording = false;
+  micBtn.classList.remove('recording');
+  micBtn.textContent = '🎤';
+  try { recognition.stop(); } catch(_) {}
+
+  if (liveBubble) { liveBubble.remove(); liveBubble = null; }
+
+  const text = pendingText.trim();
+  if (text && shouldSend) {
+    sendMessage(text);
+  }
+  pendingText = '';
+}
+
+// ── Text input ──
+textInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && textInput.value.trim()) {
+    sendMessage(textInput.value.trim());
+    textInput.value = '';
+  }
+});
+
+sendBtn.addEventListener('click', () => {
+  const text = textInput.value.trim();
+  if (text) {
+    sendMessage(text);
+    textInput.value = '';
+  }
+});
+
+// Toggle input mode
+$('#modeToggle').addEventListener('click', () => {
+  inputMode = inputMode === 'voice' ? 'text' : 'voice';
+  updateInputMode();
+  if (inputMode === 'text') {
+    setTimeout(() => textInput.focus(), 100);
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    inputMode = inputMode === 'voice' ? 'text' : 'voice';
+    updateInputMode();
+  }
+});
+
+// ── Send Message ──
+async function sendMessage(text) {
+  // Hide welcome
+  if (welcome) welcome.style.display = 'none';
+
+  // Add user bubble
+  addBubble('mom', text);
+  chatHistory.push({ role: 'user', content: text });
+  saveHistory();
+  scrollToBottom();
+
+  // Show typing indicator
+  const typingBubble = addBubble('ai', '');
+  typingBubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  scrollToBottom();
+
+  try {
+    // Get conversation context (last 10 messages)
+    const context = chatHistory.slice(-10);
+
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: context }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || '请求失败');
+    }
+
+    const data = await resp.json();
+    const reply = data.reply;
+
+    // Remove typing, add real reply
+    typingBubble.remove();
+    addBubble('ai', reply);
+    chatHistory.push({ role: 'assistant', content: reply });
+    saveHistory();
+    scrollToBottom();
+
+    // Async: extract card
+    extractCard(text, reply);
+
+  } catch (e) {
+    typingBubble.remove();
+    addBubble('ai', '嗯…刚才走神了，再说一次好不好？');
+    console.error(e);
+  }
+}
+
+async function extractCard(userMessage, aiReply) {
+  try {
+    const resp = await fetch('/api/card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userMessage, aiReply }),
+    });
+
+    if (!resp.ok) return;
+    const data = await resp.json();
+
+    if (data.card && !data.skipped) {
+      const card = {
+        ...data.card,
+        id: Date.now(),
+        date: new Date().toISOString(),
+        context: userMessage,
+      };
+      cards.unshift(card);
+      if (cards.length > 200) cards.length = 200; // Cap
+      localStorage.setItem('talktalk_cards', JSON.stringify(cards));
+
+      // Show subtle notification in chat
+      const notice = document.createElement('div');
+      notice.className = 'card-notice';
+      notice.textContent = `✨ 已保存想法卡片「${card.title}」`;
+      chatArea.appendChild(notice);
+      scrollToBottom();
+
+      // Update badge
+      updateCardBadge();
+    }
+  } catch (e) {
+    // Card extraction is non-critical, fail silently
+    console.log('Card extraction skipped:', e.message);
+  }
+}
+
+// ── Render ──
+function addBubble(role, text) {
+  const div = document.createElement('div');
+  div.className = `bubble bubble-${role}`;
+  div.textContent = text;
+  chatArea.appendChild(div);
+  return div;
+}
+
+function renderChatHistory() {
+  if (chatHistory.length === 0) return;
+  if (welcome) welcome.style.display = 'none';
+  chatArea.innerHTML = '';
+  chatHistory.forEach(msg => {
+    const role = msg.role === 'user' ? 'mom' : 'ai';
+    addBubble(role, msg.content);
+  });
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  requestAnimationFrame(() => {
+    chatArea.scrollTop = chatArea.scrollHeight;
+  });
+}
+
+function saveHistory() {
+  // Keep last 100 messages
+  const trimmed = chatHistory.slice(-100);
+  localStorage.setItem('talktalk_history', JSON.stringify(trimmed));
+}
+
+// ── Card Wall ──
+$('#cardWallBtn').addEventListener('click', openCardWall);
+$('#cardWallBack').addEventListener('click', closeCardWall);
+$('#cardModal').addEventListener('click', (e) => {
+  if (e.target === cardModal) closeCardModal();
+});
+
+function openCardWall() {
+  renderCards();
+  cardWall.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCardWall() {
+  cardWall.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderCards() {
+  cardCount.textContent = `${cards.length} 张`;
+  if (cards.length === 0) {
+    cardGrid.innerHTML = `
+      <div class="empty-cards">
+        <div class="empty-cards-emoji">📝</div>
+        <div class="empty-cards-text">
+          还没有想法卡片<br>
+          去跟小话聊聊，<br>
+          有意思的想法会自动变成卡片
+        </div>
+      </div>`;
+    return;
+  }
+  cardGrid.innerHTML = cards.map(c => {
+    const catClass = c.category ? `cat-${c.category}` : '';
+    const catLabel = c.category || '';
+    const date = new Date(c.date);
+    const dateStr = `${date.getMonth()+1}/${date.getDate()}`;
+    return `
+      <div class="card" data-card-id="${c.id}">
+        <div class="card-emoji">${c.emoji || '💭'}</div>
+        <div class="card-title">${escHtml(c.title)}</div>
+        <div class="card-summary">${escHtml(c.summary)}</div>
+        <div class="card-date">${dateStr}</div>
+        ${catLabel ? `<span class="card-cat ${catClass}">${catLabel}</span>` : ''}
+      </div>`;
+  }).join('');
+
+  // Attach click handlers
+  cardGrid.querySelectorAll('.card').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = parseInt(el.dataset.cardId);
+      const card = cards.find(c => c.id === id);
+      if (card) openCardModal(card);
+    });
+  });
+}
+
+function openCardModal(card) {
+  const catClass = card.category ? `cat-${card.category}` : '';
+  const catLabel = card.category || '';
+  const date = new Date(card.date);
+  const dateStr = `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()}`;
+  cardDetail.innerHTML = `
+    <div class="card-detail-emoji">${card.emoji || '💭'}</div>
+    <div class="card-detail-title">${escHtml(card.title)}</div>
+    ${catLabel ? `<div class="card-detail-cat"><span class="card-cat ${catClass}">${catLabel}</span></div>` : ''}
+    <div class="card-detail-summary">${escHtml(card.summary)}</div>
+    <div class="card-detail-context">💬 "${escHtml(card.context)}"</div>
+    <div class="card-detail-date">${dateStr}</div>
+    <button class="card-detail-close" onclick="closeCardModal()">知道了</button>
+  `;
+  cardModal.classList.add('open');
+}
+
+function closeCardModal() {
+  cardModal.classList.remove('open');
+}
+
+function updateCardBadge() {
+  const btn = $('#cardWallBtn');
+  if (cards.length > 0) {
+    btn.style.position = 'relative';
+    // Simple badge via title
+    btn.title = `${cards.length} 张卡片`;
+  }
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  toastContainer.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// ── Helpers ──
+function escHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+// ── Boot ──
+init();
+updateCardBadge();
+console.log('🍵 TalkTalk ready');
+</script>
+</body>
+</html>
