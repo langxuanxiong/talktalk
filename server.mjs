@@ -2,6 +2,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { shouldSearch, searchDuckDuckGo, formatSearchContext } from './lib/search.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3333;
@@ -21,7 +22,7 @@ const MIME = {
 
 function serveStatic(res, filePath) {
   const safe = path.normalize(filePath).replace(/^\.\./, '');
-  const full = path.join(__dirname, 'public', safe);
+  const full = path.join(__dirname, safe);
   if (!fs.existsSync(full) || fs.statSync(full).isDirectory()) {
     res.writeHead(404);
     res.end('Not Found');
@@ -83,6 +84,12 @@ const SYSTEM_PROMPT = `你是「小话」，一个温柔随和的倾听伙伴。
 - 「首先…其次…最后…」
 - 「很高兴为你服务」「有什么我可以帮你的」
 
+参考信息的使用：
+- 如果对话包含「[参考信息]」段落，那是我临时查到的实时资料
+- 用「我刚看到…」「听说…」「好像说…」这样自然的语气融入回复
+- 别像念百科一样复述，挑一两个有意思的点随口聊出来
+- 如果参考资料没什么用或者和她说的不一样，以她说的为准，忽略资料即可
+
 你就是个愿意听她说话的朋友，仅此而已。`;
 
 const server = http.createServer(async (req, res) => {
@@ -102,8 +109,22 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       const { messages } = JSON.parse(body);
 
+      // 🔍 搜索意图检测
+      let systemPrompt = SYSTEM_PROMPT;
+      const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+      if (lastUserMsg && shouldSearch(lastUserMsg.content)) {
+        const q = lastUserMsg.content.replace(/^(搜索|查一下|查查|帮我查|搜一下|帮我搜|帮我查一下)\s*/g, '');
+        console.log('🔍 搜索:', q);
+        const results = await searchDuckDuckGo(q);
+        const ctx = formatSearchContext(results, q);
+        if (ctx) {
+          systemPrompt = SYSTEM_PROMPT + '\n\n' + ctx;
+          console.log('📎 注入搜索结果:', results.length, '条');
+        }
+      }
+
       const fullMessages = [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: systemPrompt },
         ...messages,
       ];
 
